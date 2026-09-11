@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
+import uuid
 
 
 # ---------------------------------------------------------------------------
@@ -39,17 +40,19 @@ class LaunchEvent:
     status: str
 
     def __eq__(self, other: object) -> bool:
-        raise NotImplementedError
+        if not isinstance(other, LaunchEvent):
+            return False
+        return self.id == other.id
 
     def __hash__(self) -> int:
-        raise NotImplementedError
+        return hash(self.id)
 
     def __repr__(self) -> str:
-        raise NotImplementedError
+        return f"LaunchEvent(id={self.id!r}, name={self.name!r})"
 
 
 # ---------------------------------------------------------------------------
-# Task 2 — EntityNotFoundError
+# Task 2 — EntityNotFoundError & Domain Exceptions
 # ---------------------------------------------------------------------------
 
 
@@ -63,7 +66,19 @@ class EntityNotFoundError(Exception):
     """
 
     def __init__(self, entity_id: str) -> None:
-        raise NotImplementedError
+        self.entity_id = entity_id
+        super().__init__(f"Entity with id '{entity_id}' not found")
+
+    def __str__(self) -> str:
+        return f"Entity with id '{self.entity_id}' not found"
+
+
+class DuplicateEntityError(ValueError):
+    """Domain exception raised when attempting to add an entity with an existing id.
+
+    Inherits from ValueError for backwards compatibility with repository test suites.
+    """
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +136,7 @@ class InMemoryRepository(Generic[T]):
     """
 
     def __init__(self) -> None:
-        raise NotImplementedError
+        self._storage: dict[str, T] = {}
 
     def add(self, entity: T) -> T:
         """Persist *entity*.
@@ -130,7 +145,11 @@ class InMemoryRepository(Generic[T]):
             ValueError: with message ``"Entity with id '<id>' already exists"``
                 if the id is already stored.
         """
-        raise NotImplementedError
+        entity_id = getattr(entity, "id")
+        if entity_id in self._storage:
+            raise DuplicateEntityError(f"Entity with id '{entity_id}' already exists")
+        self._storage[entity_id] = entity
+        return entity
 
     def get(self, entity_id: str) -> T:
         """Retrieve by id.
@@ -138,11 +157,13 @@ class InMemoryRepository(Generic[T]):
         Raises:
             EntityNotFoundError: if *entity_id* is not stored.
         """
-        raise NotImplementedError
+        if entity_id not in self._storage:
+            raise EntityNotFoundError(entity_id)
+        return self._storage[entity_id]
 
     def list_all(self) -> list[T]:
         """Return all stored entities as a list."""
-        raise NotImplementedError
+        return list(self._storage.values())
 
     def update(self, entity: T) -> T:
         """Replace the stored entity whose id matches ``entity.id``.
@@ -150,7 +171,11 @@ class InMemoryRepository(Generic[T]):
         Raises:
             EntityNotFoundError: if the id is not stored.
         """
-        raise NotImplementedError
+        entity_id = getattr(entity, "id")
+        if entity_id not in self._storage:
+            raise EntityNotFoundError(entity_id)
+        self._storage[entity_id] = entity
+        return entity
 
     def delete(self, entity_id: str) -> None:
         """Remove the entity with *entity_id*.
@@ -158,11 +183,17 @@ class InMemoryRepository(Generic[T]):
         Raises:
             EntityNotFoundError: if *entity_id* is not stored.
         """
-        raise NotImplementedError
+        if entity_id not in self._storage:
+            raise EntityNotFoundError(entity_id)
+        del self._storage[entity_id]
 
     def filter_by(self, **kwargs: Any) -> list[T]:
         """Return entities matching all *kwargs* via ``getattr``."""
-        raise NotImplementedError
+        return [
+            entity
+            for entity in self._storage.values()
+            if all(getattr(entity, key, None) == val for key, val in kwargs.items())
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +210,7 @@ class EventService:
 
     def __init__(self, repo: Repository[LaunchEvent]) -> None:
         """Store the injected repository."""
-        raise NotImplementedError
+        self._repo = repo
 
     def schedule_event(
         self, name: str, date: str, location: str
@@ -188,7 +219,14 @@ class EventService:
 
         The event is added to the repository and returned.
         """
-        raise NotImplementedError
+        event = LaunchEvent(
+            id=uuid.uuid4().hex,
+            name=name,
+            date=date,
+            location=location,
+            status="scheduled",
+        )
+        return self._repo.add(event)
 
     def cancel_event(self, event_id: str) -> LaunchEvent:
         """Set an existing event's status to ``'scrubbed'`` and persist.
@@ -196,7 +234,9 @@ class EventService:
         Raises:
             EntityNotFoundError: if no event with *event_id* exists.
         """
-        raise NotImplementedError
+        event = self._repo.get(event_id)
+        event.status = "scrubbed"
+        return self._repo.update(event)
 
     def get_upcoming(self, min_date: str) -> list[LaunchEvent]:
         """Return scheduled events on or after *min_date*.
@@ -204,4 +244,5 @@ class EventService:
         Filters by ``status='scheduled'`` AND ``date >= min_date``
         (lexicographic comparison is correct for ISO-8601 date strings).
         """
-        raise NotImplementedError
+        scheduled = self._repo.filter_by(status="scheduled")
+        return [e for e in scheduled if e.date >= min_date]

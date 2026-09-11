@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: launch-events-config
+data:
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  ALLOWED_HOSTS: "web,launch-events.internal,localhost"
+  DATABASE_URL: "postgres://postgres:production_db_secret@postgres:5432/launch_events"
+  REDIS_URL: "redis://redis:6379/0"
+  COLLECT_STATIC: "0"

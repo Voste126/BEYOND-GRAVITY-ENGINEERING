@@ -18,10 +18,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    # Django built-ins (order matters)
+    # Trace context correlation (must run first to capture all downstream logs)
+    "accounts.logging.TraceContextMiddleware",
+    # Django built-ins
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
-    # --- Your custom middleware (Task 2) ---
+    # --- Custom middleware ---
     "events.middleware.RequestTimingMiddleware",
     "events.middleware.OrganizationMiddleware",
 ]
@@ -54,3 +56,40 @@ TEMPLATES = [
         "OPTIONS": {"context_processors": []},
     }
 ]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "accounts.logging.StructuredJSONFormatter",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "accounts": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "events": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}

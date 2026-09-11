@@ -1,6 +1,4 @@
-"""Accounts models (Task 3 — STUB).
-
-Implement two models:
+"""Accounts models.
 
 1. ``Organization``
    - ``name``: CharField(max_length=255)
@@ -14,7 +12,7 @@ Implement two models:
    - ``Meta.unique_together``: ``("user", "organization")``
    - ``__str__`` returns ``"<username> — <role> @ <org name>"``
 
-   Role choices (use ``models.TextChoices``):
+   Role choices:
        VIEWER  = "viewer"
        MEMBER  = "member"
        ADMIN   = "admin"
@@ -22,46 +20,52 @@ Implement two models:
 
 from __future__ import annotations
 
-from django.conf import settings  # noqa: F401
+from django.conf import settings
 from django.db import models
 
 
 class Organization(models.Model):
-    """An organisation that owns launch events.
+    """An organisation that owns launch events."""
 
-    STUB: Add ``name`` and ``slug`` fields, and implement ``__str__``.
-    """
-
-    # TODO: add fields here
-    #   name = models.CharField(...)
-    #   slug = models.SlugField(...)
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True)
 
     class Meta:
         app_label = "accounts"
 
     def __str__(self) -> str:
-        raise NotImplementedError
+        return self.name
 
 
 class Membership(models.Model):
-    """Links a User to an Organisation with a role.
-
-    STUB: Add ``user``, ``organization``, and ``role`` fields.
-    """
+    """Links a User to an Organisation with a role."""
 
     class Role(models.TextChoices):
         VIEWER = "viewer", "Viewer"
         MEMBER = "member", "Member"
         ADMIN = "admin", "Admin"
 
-    # TODO: add fields here
-    #   user = models.ForeignKey(settings.AUTH_USER_MODEL, ...)
-    #   organization = models.ForeignKey(Organization, ...)
-    #   role = models.CharField(...)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.VIEWER,
+    )
 
     class Meta:
         app_label = "accounts"
-        # TODO: add unique_together = ("user", "organization")
+        unique_together = ("user", "organization")
 
     def __str__(self) -> str:
-        raise NotImplementedError
+        username = getattr(self.user, "username", "Unknown")
+        org_name = getattr(self.organization, "name", "Unknown")
+        return f"{username} — {self.role} @ {org_name}"
