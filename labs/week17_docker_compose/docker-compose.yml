@@ -1,0 +1,16 @@
+# Week 17 — Docker Compose (STUB)
+#
+# Define three services: web, db, redis
+# See README.md Task 2 for full specifications.
+#
+# Requirements:
+#   - Compose V2 syntax (no "version:" key needed)
+#   - web: build from ./Dockerfile, depends_on db & redis (condition: service_healthy)
+#   - db: postgres:16-alpine with pgdata volume and pg_isready health check
+#   - redis: redis:7-alpine with redis-cli ping health check
+#   - Named volume: pgdata
+#   - web reads env from .env file
+
+# TODO: define services
+
+# TODO: define volumes

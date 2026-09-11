@@ -1,0 +1,9 @@
+# Production dependencies for the Django launch-events app
+django>=5.1,<6.0
+gunicorn>=22.0,<23.0
+psycopg[binary]>=3.2,<4.0
+django-redis>=5.4,<6.0
+# Dev / test dependencies
+pytest>=8.0
+pytest-django>=4.8
+factory-boy>=3.3
